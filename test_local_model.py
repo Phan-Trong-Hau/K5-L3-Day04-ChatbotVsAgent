@@ -45,6 +45,16 @@ class LocalModelTests(unittest.TestCase):
         self.assertEqual(final.stop_reason, 'end_turn')
         self.assertEqual(final.content[0].text, 'Xong')
 
+    def test_malformed_model_arguments_are_repaired_by_policy(self):
+        reply = {'message': {'content': '', 'tool_calls': [
+            {'function': {'name': 'get_current_date', 'arguments': '{bad json'}},
+        ]}}
+        with patch.object(agent, 'urlopen', return_value=io.BytesIO(json.dumps(reply).encode())):
+            response = agent.call_model([{'role': 'user', 'content': 'Hôm nay là ngày bao nhiêu?'}])
+        self.assertEqual(response.stop_reason, 'tool_use')
+        self.assertEqual(response.content[-1].name, 'get_current_date')
+        self.assertEqual(response.content[-1].input, {})
+
     def test_connection_and_http_errors(self):
         with patch.object(agent, 'urlopen', side_effect=URLError('connection refused')):
             with self.assertRaisesRegex(RuntimeError, 'Không kết nối được Ollama'):

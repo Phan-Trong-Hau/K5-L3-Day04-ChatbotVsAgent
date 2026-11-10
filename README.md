@@ -64,7 +64,8 @@ flowchart LR
 | File | Nội dung |
 |---|---|
 | `tools.py` | 2 tool mẫu đã viết sẵn (`get_current_date`, `get_weather`) và **TODO 1, TODO 2** |
-| `agent.py` | System prompt, hàm gọi model và **TODO 3** |
+| `agent.py` | System prompt, hàm gọi model và agent loop (TODO 3 đã hoàn thiện) |
+| `workflow.py` | Kiểm tra các bước còn thiếu và tạo câu trả lời dựa trên kết quả tool thật |
 | `check.py` | Tự kiểm tra 3 TODO, không cần API key |
 | `dataset.py` | 20 câu hỏi test, chia 4 mức: easy, medium, hard, edge |
 | `evaluate.py` | Chạy agent trên dataset, chấm tự động, xuất `report.md` và `report.json` |
@@ -246,5 +247,18 @@ Muốn thêm câu hỏi của riêng bạn: thêm 1 dict vào cuối danh sách 
 Kiểm tra phần chuyển đổi giao thức và xử lý lỗi, không cần chạy model:
 
 ```bash
-.venv/bin/python -m unittest -v test_local_model
+.venv/bin/python -m unittest -v test_local_model test_workflow
 ```
+
+## Kiểm tra bằng chứng khi dùng model local
+
+Prompt tiếng Việt chỉ dẫn model tự tra ngày, gọi đủ tool khi so sánh, giữ nguyên số liệu người dùng và không đoán dự báo. Với model nhỏ, prompt vẫn có thể bị bỏ qua; `workflow.py` bổ sung kiểm tra cho nghiệp vụ thời tiết:
+
+1. Phân tích thành phố, ngày, yêu cầu so sánh/trang phục và nhiệt độ/% mưa người dùng đã cung cấp.
+2. Gửi danh sách hành động còn thiếu cho model. Nếu model bỏ bước hoặc gọi sai tham số, thay đề nghị đó bằng các tool call cần thiết; trace ghi rõ `Policy:`.
+3. Mọi tool vẫn được chạy qua `run_tool()` trong ReAct loop và được bộ chấm ghi lại. Chỉ `tool_result` gắn đúng ID mới được coi là bằng chứng; văn bản model tự viết dạng `tool_response` không được sử dụng.
+4. Tạo phần số liệu, phép so sánh, phần trăm và gợi ý trang phục bằng Python từ kết quả tool thật. Chào hỏi và sáng tác vẫn dùng câu trả lời của model.
+
+Đây là lớp quy tắc cho phạm vi trợ lý thời tiết của bài lab, giúp model local nhỏ làm việc ổn định hơn. Điểm chấm đo cả model lẫn lớp quy tắc này. Code không đọc dataset, ID câu hỏi hoặc điều kiện chấm để tạo câu trả lời; ngày và số liệu được lấy khi chạy.
+
+`MAX_ITERATIONS` vẫn giới hạn số vòng. Nếu gỡ một tool khỏi `TOOLS`, policy báo thiếu tool thay vì gọi tool không có schema. Các kiểm thử bổ sung dùng ngày, số liệu, cách viết thành phố khác bộ chấm và cả phản hồi model bịa kết quả.
