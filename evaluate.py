@@ -4,7 +4,7 @@
     python evaluate.py --level edge       # chỉ 1 mức: easy | medium | hard | edge
     python evaluate.py --ids E1,M2,X4     # chỉ vài câu (tiết kiệm token khi đang sửa lỗi)
 
-Cần làm xong 3 TODO và có API key. Mỗi câu tốn khoảng 1–6 lượt gọi model.
+Cần làm xong 3 TODO và chạy Ollama local. Mỗi câu tốn khoảng 1–6 lượt gọi model.
 """
 from __future__ import annotations
 
@@ -79,7 +79,7 @@ def run_case(case: dict) -> dict:
     try:
         with contextlib.redirect_stdout(log):
             answer = agent.run_agent(case["question"]) or ""
-    except (Exception, SystemExit) as e:  # noqa: BLE001  (SystemExit: agent báo thiếu API key)
+    except (Exception, SystemExit) as e:  # noqa: BLE001  (SystemExit: agent báo lỗi cấu hình)
         answer, error = "", f"{type(e).__name__}: {e}"
     finally:
         agent.run_tool, agent.call_model = real_run_tool, real_call_model

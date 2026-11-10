@@ -37,7 +37,7 @@ flowchart LR
         P -.->|"gửi kèm mỗi lần gọi"| L
     end
 
-    L <-->|"messages + schema TOOLS<br/>trả về: text hoặc tool_use"| M[("Claude API")]
+    L <-->|"messages + schema TOOLS<br/>trả về: text hoặc tool_use"| M[("Ollama local")]
     L -->|"run_tool(name, args)"| R
 
     subgraph TL["tools.py"]
@@ -72,19 +72,27 @@ flowchart LR
 
 ## Bắt đầu
 
-Yêu cầu Python 3.10 trở lên.
+Yêu cầu Python 3.10 trở lên và Ollama đang chạy trên máy. Cài model hỗ trợ tool calling:
 
 ```bash
-git clone https://github.com/VinUni-AI20k/K5-L3-Day04-ChatbotVsAgent.git
+ollama pull qwen2.5:7b
+# Nếu Ollama chưa chạy: ollama serve
+```
+
+Agent mặc định dùng `qwen2.5:7b` qua `http://localhost:11434`, không cần API key.
+Giao tiếp tool calling theo [Ollama Chat API](https://docs.ollama.com/api/chat).
+
+```bash
+git clone https://github.com/Phan-Trong-Hau/K5-L3-Day04-ChatbotVsAgent.git
 cd K5-L3-Day04-ChatbotVsAgent
 ./run.sh setup
 ```
 
-`setup` tạo môi trường `.venv`, cài thư viện và tạo file `.env`. Mở `.env` và điền `ANTHROPIC_API_KEY` của bạn.
+`setup` tạo môi trường `.venv`, cài thư viện và tạo file `.env`. File `.env` cấu hình `MODEL=qwen2.5:7b` và `OLLAMA_HOST=http://localhost:11434`. Có thể đổi sang model local khác hỗ trợ tool calling, ví dụ `qwen3:4b-instruct`.
 
 Các lệnh dùng trong bài:
 
-| Lệnh | Làm gì | Cần API key? |
+| Lệnh | Làm gì | Cần Ollama? |
 |---|---|---|
 | `./run.sh check` | Kiểm tra 3 TODO | Không |
 | `./run.sh ask "Ngày mai ở Đà Nẵng nên mặc gì?"` | Hỏi agent 1 câu, xem trace | Có |
@@ -98,7 +106,7 @@ Các lệnh dùng trong bài:
 python -m venv .venv
 .venv\Scripts\activate          # Mac / Linux: source .venv/bin/activate
 pip install -r requirements.txt
-copy .env.example .env           # Mac / Linux: cp .env.example .env, rồi điền ANTHROPIC_API_KEY
+copy .env.example .env           # Mac / Linux: cp .env.example .env, rồi kiểm tra MODEL và OLLAMA_HOST
 
 python check.py                  # = ./run.sh check
 python agent.py "Ngày mai ở Đà Nẵng nên mặc gì?"   # = ./run.sh ask "..."
@@ -152,7 +160,7 @@ Bên dưới, một câu hỏi chạy qua hệ thống như sau. Mỗi lần mod
 sequenceDiagram
     actor U as Người dùng
     participant A as agent.py (loop)
-    participant M as Claude
+    participant M as Qwen local
     participant T as tools.py
 
     U->>A: Ngày mai ở Đà Nẵng nên mặc gì?
@@ -230,3 +238,13 @@ Muốn thêm câu hỏi của riêng bạn: thêm 1 dict vào cuối danh sách 
 1. Chọn 1 câu FAIL hoặc PARTIAL trong report. Đọc trace: agent sai ở Thought, Action hay Observation? Sửa system prompt hoặc description của tool rồi chạy lại câu đó (`./run.sh eval --ids <ID>`).
 2. Xóa `get_current_date` khỏi `TOOLS` rồi chạy `./run.sh eval --level medium`. Điểm thay đổi thế nào? Vì sao?
 3. Đặt `MAX_ITERATIONS = 2` trong `agent.py` rồi chạy `./run.sh eval --level hard`. Chuyện gì xảy ra? Vì sao agent cần giới hạn này?
+
+## Chạy bằng model local
+
+`agent.py` chuyển schema và lịch sử tool sang định dạng Ollama, rồi chuyển phản hồi về giao diện mà agent loop và bộ chấm đang dùng. Không gọi dịch vụ model bên ngoài. `report.json` ghi số token do Ollama trả về.
+
+Kiểm tra phần chuyển đổi giao thức và xử lý lỗi, không cần chạy model:
+
+```bash
+.venv/bin/python -m unittest -v test_local_model
+```
